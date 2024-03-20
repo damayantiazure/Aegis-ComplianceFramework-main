@@ -1,0 +1,38 @@
+trigger: none
+#- master
+
+pool:
+  vmImage: ubuntu-latest
+variables:
+ resourceGroupName: "Aegis-Compliance-Check"
+ location: "westeurope"
+ APP_NAME: "pplncmplcycheck"
+ APP_ENV: "dev"
+ acaEnvName: "$(APP_NAME)-appenv-$(APP_ENV)" 
+ imageName: "ppln-cmplnce-check-api" 
+ containerRegistryName: "$(APP_NAME)contregistry$(APP_ENV)"
+ registryURI: "$(containerRegistryName).azurecr.io" 
+ 
+
+stages:
+  - stage: PromoteAPI
+    displayName: 'Promotes the API version'
+    jobs:
+    - job: PromoteAPI
+      displayName: 'Promote API as Public Release'
+      steps:
+      - checkout: self
+      - task: AzureCLI@2
+        displayName: Promotes the latest preview as Public Release
+        inputs:
+          azureSubscription: 'MCAPS-Hybrid-REQ-38041-2022-MoimHossain'
+          scriptType: 'bash'
+          scriptLocation: 'scriptPath'
+          scriptPath: 'Infrastructure/scripts/promote-api.sh'
+        env:
+          primaryMode: "Yes"
+          APP_NAME: $(APP_NAME)
+          APP_ENV: $(APP_ENV)
+          imageName: $(imageName)
+          location: $(location)
+          resourceGroupName: $(resourceGroupName)

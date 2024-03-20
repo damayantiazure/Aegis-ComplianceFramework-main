@@ -1,0 +1,36 @@
+
+trigger: none
+#- master
+
+pool:
+  vmImage: ubuntu-latest
+variables:
+ resourceGroupName: "Aegis-Compliance-Check" 
+ location: "westeurope"
+ APP_NAME: "pplncmplcycheck"
+ APP_ENV: "dev"
+
+
+stages:
+  - stage: PlatformProvisionStage
+    jobs:
+      - deployment: PlatformProvision
+        displayName: Provisions or updates the Development environment
+        environment: AEGIS-DEV
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Provision or update resources
+                  inputs:
+                    azureSubscription: 'MCAPS-Hybrid-REQ-38041-2022-MoimHossain'
+                    scriptType: 'bash'
+                    scriptLocation: 'scriptPath'
+                    scriptPath: 'Infrastructure/scripts/create-infra.sh'
+                  env:
+                    appname: $(APP_NAME)
+                    appEnv: $(APP_ENV)
+                    resourceGroupName: $(resourceGroupName)
+                    location: $(location)

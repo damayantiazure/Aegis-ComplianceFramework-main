@@ -1,0 +1,77 @@
+trigger: none
+#- master
+
+pool:
+  vmImage: ubuntu-latest
+variables:
+ resourceGroupName: "Aegis-Compliance-Check"
+ location: "westeurope"
+ APP_NAME: "pplncmplcycheck"
+ APP_ENV: "dev"
+ acaEnvName: "$(APP_NAME)-appenv-$(APP_ENV)" 
+ imageName: "ppln-cmplnce-check-api"
+ tag: "$(Build.BuildId)"
+ containerRegistryName: "$(APP_NAME)contregistry$(APP_ENV)"
+ registryURI: "$(containerRegistryName).azurecr.io" 
+ 
+
+stages:
+  - stage: Build
+    displayName: 'Build Container and pushes to registry'
+    jobs:
+    - job: Build
+      displayName: 'Build Job'
+      steps:
+      - checkout: self
+      - task: AzureCLI@2
+        displayName: Build docker image for ComplianceWebApi and push to Azure container registry 
+        inputs:
+          azureSubscription: 'MCAPS-Hybrid-REQ-38041-2022-MoimHossain'
+          scriptType: 'bash'
+          scriptLocation: 'scriptPath'
+          scriptPath: 'Infrastructure/scripts/build-container-image.sh'
+        env:
+            imageName: $(imageName)
+            tag: $(tag)
+            registryURI: $(registryURI)
+            
+
+  - stage: DeployComplainceApiStage
+    jobs:
+      - deployment: DeployComplainceApiJob
+        displayName: Builds container image and deploys to Azure container registry
+        environment: AEGIS-DEV
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Deploy containerapp to ACA
+                  inputs:
+                    azureSubscription: 'MCAPS-Hybrid-REQ-38041-2022-MoimHossain'
+                    scriptType: 'bash'
+                    scriptLocation: 'scriptPath'
+                    scriptPath: 'Infrastructure/scripts/deploy-containerapp.sh'
+                  env:
+                    APP_NAME: $(APP_NAME)
+                    APP_ENV: $(APP_ENV)
+                    imageName: $(imageName)
+                    tag: $(tag)
+                    location: $(location)
+                    resourceGroupName: $(resourceGroupName)                
+                - task: AzureCLI@2
+                  displayName: Update API management
+                  inputs:
+                    azureSubscription: 'MCAPS-Hybrid-REQ-38041-2022-MoimHossain'
+                    scriptType: 'bash'
+                    scriptLocation: 'scriptPath'
+                    scriptPath: 'Infrastructure/scripts/update-api.sh'
+                  env:
+                    primaryMode: "no"
+                    APP_NAME: $(APP_NAME)
+                    APP_ENV: $(APP_ENV)
+                    imageName: $(imageName)
+                    tag: $(tag)
+                    location: $(location)
+                    resourceGroupName: $(resourceGroupName)
